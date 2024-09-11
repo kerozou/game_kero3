@@ -14,6 +14,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/audio"
 	"github.com/hajimehoshi/ebiten/v2/audio/mp3"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
 )
 
 const (
@@ -90,7 +91,8 @@ func openSE(name string) ([]byte, error) {
 }
 
 func (g *Game) Update() error {
-	if ebiten.IsKeyPressed(ebiten.KeySpace) && !g.spinning {
+	// スペースキーがちょうど押されたかどうかをチェック
+	if inpututil.IsKeyJustPressed(ebiten.KeySpace) && !g.spinning {
 		g.spinning = true
 		g.finished = false
 		g.spinCount = 0
@@ -100,9 +102,20 @@ func (g *Game) Update() error {
 		g.spinSpeed[0] = 5.0
 		g.spinSpeed[1] = 4.0
 		g.spinSpeed[2] = 3.0
+
+		// Goルーチンでスピン処理を実行
+		go g.spinReels()
 	}
 
-	if g.spinning {
+	return nil
+}
+
+func (g *Game) spinReels() {
+	done := make(chan bool)
+
+	// Goルーチンでスピン処理を実行
+	go func() {
+		// スピン処理
 		g.spinCount++
 		for i := 0; i < reelCount; i++ {
 			for j := 0; j < 3; j++ {
@@ -110,32 +123,49 @@ func (g *Game) Update() error {
 			}
 		}
 		g.spinning = false
-		g.finished = true
-	}
 
-	if g.finished {
-		// リールを止めた後に効果音を再生
-		ok := true
-		for i := 1; i < reelCount; i++ {
-			fmt.Printf("g.reels[1][%d] = %d, g.reels[1][0] = %d\n", i, g.reels[1][i], g.reels[1][0])
-			if g.reels[1][i] != g.reels[1][0] {
+		// スピンが終了したことを通知
+		done <- true
+	}()
+
+	// スピン処理が完了するのを待つ
+	<-done
+
+	// スピンが終了したらfinished処理を実行
+	g.finished = true
+	g.checkReels()
+}
+
+func (g *Game) checkReels() {
+	done := make(chan bool)
+	ok := true
+
+	// Goルーチンでforループを実行
+	go func() {
+		for i := 0; i < reelCount; i++ {
+			fmt.Printf("[1][%d] = %d, [1][0] = %d\n", i, reelSymbols[g.reels[1][i]][i], reelSymbols[g.reels[1][0]][0])
+			if reelSymbols[g.reels[1][i]][i] != reelSymbols[g.reels[1][i]][0] {
 				ok = false
 			}
 		}
-		if ok {
-			sePlayer := g.audioContext.NewPlayerFromBytes(g.se2)
-			sePlayer.SetVolume(0.3) // 音量を20%に設定
-			sePlayer.Play()
-		} else {
-			sePlayer := g.audioContext.NewPlayerFromBytes(g.se1)
-			sePlayer.SetVolume(0.1) // 音量を50%に設定
-			sePlayer.Play()
-		}
-		g.finished = false
-		fmt.Printf("end\n")
-	}
+		done <- true
+	}()
 
-	return nil
+	// forループが終了するのを待つ
+	<-done
+
+	// 後続の処理
+	if ok {
+		sePlayer := g.audioContext.NewPlayerFromBytes(g.se2)
+		sePlayer.SetVolume(0.3) // 音量を30%に設定
+		sePlayer.Play()
+	} else {
+		sePlayer := g.audioContext.NewPlayerFromBytes(g.se1)
+		sePlayer.SetVolume(0.1) // 音量を10%に設定
+		sePlayer.Play()
+	}
+	g.finished = false
+	fmt.Printf("end\n")
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
