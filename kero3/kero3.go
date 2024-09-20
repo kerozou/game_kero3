@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"image/png"
 	"io"
 	"log"
 	"math/rand"
-	"os"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/audio"
@@ -62,26 +62,34 @@ func NewGame(Rand *rand.Rand) *Game {
 
 func (g *Game) Init() {
 	// 1.リール画像の読み込み
-	img, _, err := ebitenutil.NewImageFromFile("assets/reel2.png")
+	img, err := Embed.Open("reel2.png")
 	if err != nil {
 		log.Fatal(err)
 	}
-	g.reelImage2 = img
+	p, err := png.Decode(img)
+	if err != nil {
+		log.Fatal(err)
+	}
+	g.reelImage2 = ebiten.NewImageFromImage(p)
 
 	// 2.真ん中のバーの表示
-	img2, _, err := ebitenutil.NewImageFromFile("assets/bar.png")
+	img2, err := Embed.Open("bar.png")
 	if err != nil {
 		log.Fatal(err)
 	}
-	g.barImage = img2
+	p2, err := png.Decode(img2)
+	if err != nil {
+		log.Fatal(err)
+	}
+	g.barImage = ebiten.NewImageFromImage(p2)
 
 	// 音設定
 	g.audioContext = audio.NewContext(44100)
-	g.se1, err = openSE("./assets/1.mp3")
+	g.se1, err = openSE("1.mp3")
 	if err != nil {
 		log.Fatalf("failed to load sound effect 1: %v", err)
 	}
-	g.se2, err = openSE("./assets/2.mp3")
+	g.se2, err = openSE("2.mp3")
 	if err != nil {
 		log.Fatalf("failed to load sound effect 1: %v", err)
 	}
@@ -96,11 +104,10 @@ func (g *Game) Init() {
 }
 
 func openSE(name string) ([]byte, error) {
-	file, err := os.Open(name)
+	file, err := Embed.Open(name)
 	if err != nil {
 		panic(err)
 	}
-	defer file.Close()
 	src, err2 := mp3.DecodeWithoutResampling(file)
 	if err2 != nil {
 		panic(err2)
