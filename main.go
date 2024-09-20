@@ -12,9 +12,9 @@ import (
 const (
 )
 func main() {
-	seed := rand.NewSource(time.Now().UnixNano())
+	Rand := rand.New(rand.NewSource(time.Now().UnixNano()))
 
-	game := kero3.NewGame(seed)
+	game := kero3.NewGame(Rand)
 
 	ebiten.SetWindowSize(kero3.ScreenWidth, kero3.ScreenHeight)
 	ebiten.SetWindowTitle("Slot Game")
