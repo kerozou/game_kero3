@@ -39,6 +39,7 @@ var reelSymbols = [10][3]int{
 }
 
 type Game struct {
+	rand         *rand.Rand
 	reels        [reelCount][3]int
 	spinning     bool
 	finished     bool
@@ -52,9 +53,9 @@ type Game struct {
 	barImage     *ebiten.Image
 }
 
-func NewGame() *Game {
+func NewGame(Rand *rand.Rand) *Game {
 	// Create the game
-	game := &Game{}
+	game := &Game{rand: Rand}
 	game.Init()
 	return game
 }
@@ -113,9 +114,9 @@ func (g *Game) Update() error {
 		g.spinning = true
 		g.finished = false
 		g.spinCount = 0
-		g.spinTarget[0] = rand.Intn(16) + 8  // 8~12
-		g.spinTarget[1] = rand.Intn(45) + 13 // 13~18
-		g.spinTarget[2] = rand.Intn(37) + 15 // 15~21
+		g.spinTarget[0] = g.rand.Intn(16) + 8  // 8~12
+		g.spinTarget[1] = g.rand.Intn(45) + 13 // 13~18
+		g.spinTarget[2] = g.rand.Intn(37) + 15 // 15~21
 		g.spinSpeed[0] = 5.0
 		g.spinSpeed[1] = 4.0
 		g.spinSpeed[2] = 3.0
