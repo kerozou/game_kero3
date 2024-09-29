@@ -1,2 +1,5 @@
 # game_kero3
-スロットマシーン
+スロットマシーンのゲーム
+
+## 概要
+golang, ebitengine の練習用にkerokeroが個人的に作ってるものになります。
