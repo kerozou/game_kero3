@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"math/rand"
+	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/audio"
@@ -39,18 +40,20 @@ var reelSymbols = [10][3]int{
 }
 
 type Game struct {
-	rand         *rand.Rand
-	reels        [reelCount][3]int
-	spinning     bool
-	finished     bool
-	spinCount    int
-	spinTarget   [reelCount]int
-	spinSpeed    [reelCount]float64
-	audioContext *audio.Context
-	se1          []byte // うぉ
-	se2          []byte // おはようございます
-	reelImage2   *ebiten.Image
-	barImage     *ebiten.Image
+	rand           *rand.Rand
+	reels          [reelCount][3]int // 各リールがSymbolCountのindexを持つ(0~9) 配列のi
+	isFlashing     bool
+	flashStartTime time.Time
+	spinning       bool
+	finished       bool
+	spinCount      int
+	spinTarget     [reelCount]int
+	spinSpeed      [reelCount]float64
+	audioContext   *audio.Context
+	se1            []byte // うぉ
+	se2            []byte // おはようございます
+	reelImage2     *ebiten.Image
+	barImage       *ebiten.Image
 }
 
 func NewGame(Rand *rand.Rand) *Game {
@@ -97,7 +100,7 @@ func (g *Game) Init() {
 	// リールの初期化
 	for i := 0; i < reelCount; i++ {
 		for j := 0; j < 3; j++ {
-			g.reels[i][j] = reelSymbols[i][j]
+			g.reels[i][j] = i
 		}
 	}
 
@@ -120,6 +123,8 @@ func (g *Game) Update() error {
 	if inpututil.IsKeyJustPressed(ebiten.KeySpace) && !g.spinning {
 		g.spinning = true
 		g.finished = false
+		g.isFlashing = false
+		g.flashStartTime = time.Now()
 		g.spinCount = 0
 		g.spinTarget[0] = g.rand.Intn(16) + 8  // 8~12
 		g.spinTarget[1] = g.rand.Intn(45) + 13 // 13~18
@@ -132,6 +137,11 @@ func (g *Game) Update() error {
 		go g.spinReels()
 	}
 
+	// フラッシュの継続時間をチェック
+	if g.isFlashing && time.Since(g.flashStartTime) > 100*time.Millisecond {
+		g.isFlashing = false
+	}
+
 	return nil
 }
 
@@ -140,12 +150,15 @@ func (g *Game) spinReels() {
 
 	// Goルーチンでスピン処理を実行
 	go func() {
-		// スピン処理
-		g.spinCount++
-		for i := 0; i < reelCount; i++ {
-			for j := 0; j < 3; j++ {
-				g.reels[i][j] = (g.spinTarget[i] + j) % symbolCount
-			}
+		// 上段を確定する
+		for j := 0; j < reelCount; j++ {
+			g.reels[0][j] = (g.spinTarget[j] + g.reels[0][j]) % symbolCount
+		}
+
+		// 中段, 下段も追従させる
+		for j := 0; j < reelCount; j++ {
+			g.reels[1][j] = (g.reels[0][j] + 1) % symbolCount
+			g.reels[2][j] = (g.reels[1][j] + 1) % symbolCount
 		}
 		g.spinning = false
 
@@ -164,13 +177,15 @@ func (g *Game) spinReels() {
 func (g *Game) checkReels() {
 	done := make(chan bool)
 	ok := true
+	g.isFlashing = true
 
 	// Goルーチンでforループを実行
 	go func() {
 		for i := 0; i < reelCount; i++ {
 			fmt.Printf("[1][%d] = %d, [1][0] = %d\n", i, reelSymbols[g.reels[1][i]][i], reelSymbols[g.reels[1][0]][0])
-			if reelSymbols[g.reels[1][i]][i] != reelSymbols[g.reels[1][i]][0] {
+			if reelSymbols[g.reels[1][i]][i] != reelSymbols[g.reels[1][0]][0] {
 				ok = false
+				g.isFlashing = false
 			}
 		}
 		done <- true
@@ -194,7 +209,14 @@ func (g *Game) checkReels() {
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
-	screen.Fill(color.RGBA{0, 0, 0, 0xff})
+	// フラッシュ
+	if g.isFlashing {
+		// 画面を白色で塗りつぶす
+		screen.Fill(color.RGBA{255, 255, 255, 255})
+	} else {
+		// 通常の描画
+		screen.Fill(color.RGBA{0, 0, 0, 255})
+	}
 
 	centerX := (ScreenWidth - reelCount*symbolWidth - 230) / 2
 	centerY := (ScreenHeight - 3*symbolHeight) / 2
@@ -205,27 +227,15 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	opbar.ColorScale.Scale(1, 1, 1, 0.2) // 透明度50%
 	screen.DrawImage(g.barImage, opbar)
 
-	// 回転中描画
-	if g.spinning {
-		for i := 0; i < reelCount; i++ {
-			for j := 0; j < 3; j++ { // 3つのスプライトを描画してスライド効果を実現
-				op := &ebiten.DrawImageOptions{}
-				op.GeoM.Translate(float64(centerX+i*symbolWidth), float64(centerY+(j-1)*symbolHeight))
-				symbolIndex := g.reels[i][j]
-				screen.DrawImage(g.reelImage2.SubImage(image.Rect(symbolWidth*i, symbolIndex*symbolHeight, symbolWidth*i, (symbolIndex+1)*symbolHeight)).(*ebiten.Image), op)
-			}
-		}
-	}
-
 	// 回転停止後描画
 	if !g.spinning {
 		// リールの回転が終了したときにスプライトの位置をピクセル単位で調整
 		for i := 0; i < reelCount; i++ {
 			for j := 0; j < 3; j++ {
 				op := &ebiten.DrawImageOptions{}
-				op.GeoM.Translate(float64(centerX+i*symbolWidth), float64(centerY+j*symbolHeight))
+				op.GeoM.Translate(float64(centerX+j*symbolWidth), float64(centerY+i*symbolHeight))
 				symbolIndex := g.reels[i][j]
-				screen.DrawImage(g.reelImage2.SubImage(image.Rect(symbolWidth*i, symbolIndex*symbolHeight, symbolWidth*(i+1), (symbolIndex+1)*symbolHeight)).(*ebiten.Image), op)
+				screen.DrawImage(g.reelImage2.SubImage(image.Rect(symbolWidth*j, symbolIndex*symbolHeight, symbolWidth*(j+1), (symbolIndex+1)*symbolHeight)).(*ebiten.Image), op)
 			}
 		}
 		ebitenutil.DebugPrint(screen, "Press SPACE to spin")
@@ -233,8 +243,8 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		// 2行目の各マスのスプライトの値を画面の右下に描画
 		for i := 0; i < reelCount; i++ {
 			for j := 0; j < 3; j++ {
-				text := fmt.Sprintf("%d", reelSymbols[g.reels[i][j]][i])
-				ebitenutil.DebugPrintAt(screen, text, ScreenWidth-240+symbolWidth*i, ScreenHeight-320+(symbolHeight+10)*j)
+				text := fmt.Sprintf("%d", reelSymbols[g.reels[i][j]][j])
+				ebitenutil.DebugPrintAt(screen, text, ScreenWidth-240+symbolWidth*j, ScreenHeight-320+(symbolHeight+10)*i)
 			}
 		}
 	}
@@ -243,4 +253,3 @@ func (g *Game) Draw(screen *ebiten.Image) {
 func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 	return ScreenWidth, ScreenHeight
 }
-
