@@ -1,8 +1,7 @@
-package main
+package stateMachine
 
 import (
 	"image/color"
-	"log"
 
 	"github.com/PenguinCabinet/pgfsm"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -186,24 +185,4 @@ func (sm *TitleGameState) Update(
 // このステートが実行されていなくても、スタック上にあれば呼び出されます
 func (sm *TitleGameState) Draw(screen *ebiten.Image, stackdeep int) {
 	text.Draw(screen, "Game Title\nPressing S key,start!", sm.mplusNormalFont, 100, 100, color.White)
-}
-
-func main() {
-
-	ebiten.SetWindowSize(640, 480)
-	ebiten.SetWindowTitle("Pen_Game_State_Machine")
-
-	gms := &pgfsm.Machine{}
-
-	gms.LayoutWidth = 640
-	gms.LayoutHeight = 480
-
-	Titlesm := &TitleGameState{}
-
-	/*スタックにタイトル画面のステートを追加します*/
-	gms.StateAdd(Titlesm)
-
-	if err := ebiten.RunGame(gms); err != nil {
-		log.Fatal(err)
-	}
 }
