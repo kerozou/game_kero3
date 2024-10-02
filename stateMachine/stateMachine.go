@@ -12,6 +12,25 @@ import (
 	"golang.org/x/image/font/opentype"
 )
 
+const (
+	ScreenWidth  = 640
+	ScreenHeight = 480
+)
+
+func NewGame() *pgfsm.Machine {
+	gms := &pgfsm.Machine{}
+
+	gms.LayoutWidth = 640
+	gms.LayoutHeight = 480
+
+	Titlesm := &TitleGameState{}
+
+	/*スタックにタイトル画面のステートを追加します*/
+	gms.StateAdd(Titlesm)
+
+	return gms
+}
+
 // これがメニュー画面のステート
 type MenuGameState struct {
 	mplusNormalFont font.Face
