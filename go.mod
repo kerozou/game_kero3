@@ -23,5 +23,7 @@ require (
 
 replace (
 	github.com/kerozou/kero3/kero3 => ./kero3/
-	github.com/kerozou/stateMachine/stateMachine => ./stateMachine
+	github.com/kerozou/stateMachine/titleState => ./titleState
+	github.com/kerozou/stateMachine/menuState => ./menuState
+	github.com/kerozou/stateMachine/gameMainState => ./gameMainState
 )

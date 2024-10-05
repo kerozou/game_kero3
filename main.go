@@ -3,14 +3,31 @@ package main
 import (
 	"log"
 
+	"github.com/PenguinCabinet/pgfsm"
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/kerozou/stateMachine/stateMachine"
 )
 
-const ()
+const (
+	ScreenWidth  = 640
+	ScreenHeight = 480
+)
+
+func NewGame() *pgfsm.Machine {
+	gms := &pgfsm.Machine{}
+
+	gms.LayoutWidth = 640
+	gms.LayoutHeight = 480
+
+	Titlesm := &TitleGameState{}
+
+	/*スタックにタイトル画面のステートを追加します*/
+	gms.StateAdd(Titlesm)
+
+	return gms
+}
 
 func main() {
-	game := stateMachine.NewGame()
+	game := NewGame()
 
 	ebiten.SetWindowSize(stateMachine.ScreenWidth, stateMachine.ScreenHeight)
 	ebiten.SetWindowTitle("Slot Game")
