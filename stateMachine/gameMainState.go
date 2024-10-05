@@ -2,12 +2,15 @@ package stateMachine
 
 import (
 	"image/color"
+	"math/rand"
+	"time"
 
 	"github.com/PenguinCabinet/pgfsm"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/examples/resources/fonts"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/text"
+	"github.com/kerozou/kero3/kero3"
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/opentype"
 )
@@ -15,6 +18,7 @@ import (
 // これがゲーム画面のステート
 type GameMainState struct {
 	mplusNormalFont font.Face
+	game            *kero3.Game
 }
 
 // これがステートが最初に実行されたときに呼び出される関数
@@ -40,6 +44,10 @@ func (sm *GameMainState) Init(
 		panic(err)
 	}
 	/*ここまで Ebitenのフォントの初期化処理*/
+
+	// Game構造体のインスタンスを作成
+	Rand := rand.New(rand.NewSource(time.Now().UnixNano()))
+	sm.game = kero3.NewGame(Rand)
 }
 
 // これはマイフレーム呼び出される関数です
@@ -58,6 +66,9 @@ func (sm *GameMainState) Update(stackdeep int) pgfsm.Result {
 		}
 	}
 
+	/*ゲームの処理を行います*/
+	sm.game.Update()
+
 	/*空のpgfsm.Resultを返却することでループを継続します
 	pgfsm.Resultを書き換えることで、実行するものを新しいステートに変えたり
 	新しいステートをスタックの上に乗せたりすることができます*/
@@ -68,5 +79,8 @@ func (sm *GameMainState) Update(stackdeep int) pgfsm.Result {
 // このステートが実行されていなくても、スタック上にあれば呼び出されます
 // つまりメニューを開いている間も、ゲーム画面のdraw関数が実行されます
 func (sm *GameMainState) Draw(screen *ebiten.Image, stackdeep int) {
+	/*ゲーム画面の描写処理を行います*/
+	sm.game.Draw(screen)
+
 	text.Draw(screen, "Game Main", sm.mplusNormalFont, 200, 100, color.White)
 }

@@ -13,12 +13,12 @@ import (
 )
 
 // これがタイトル画面のステート
-type TitleGameState struct {
+type TitleState struct {
 	mplusNormalFont font.Face
 }
 
 // これがステートが最初に実行されたときに呼び出される関数
-func (sm *TitleGameState) Init(
+func (sm *TitleState) Init(
 	stackdeep int, /*ここにはこのステートがスタックのどの位置に積まれているかインデックスが入っています*/
 ) {
 	/*ここから Ebitenのフォントの初期化処理*/
@@ -44,7 +44,7 @@ func (sm *TitleGameState) Init(
 
 // これはマイフレーム呼び出される関数です
 // このステートが実行されている時のみ、呼び出されます
-func (sm *TitleGameState) Update(
+func (sm *TitleState) Update(
 	stackdeep int,
 ) pgfsm.Result {
 
@@ -67,6 +67,6 @@ func (sm *TitleGameState) Update(
 
 // これはマイフレーム呼び出される描写用の関数です
 // このステートが実行されていなくても、スタック上にあれば呼び出されます
-func (sm *TitleGameState) Draw(screen *ebiten.Image, stackdeep int) {
+func (sm *TitleState) Draw(screen *ebiten.Image, stackdeep int) {
 	text.Draw(screen, "Game Title\nPressing S key,start!", sm.mplusNormalFont, 100, 100, color.White)
 }
